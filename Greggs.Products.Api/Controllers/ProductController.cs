@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Greggs.Products.Api.DataAccess;
 using Greggs.Products.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -11,30 +12,40 @@ namespace Greggs.Products.Api.Controllers;
 [Route("[controller]")]
 public class ProductController : ControllerBase
 {
-    private static readonly string[] Products = new[]
-    {
-        "Sausage Roll", "Vegan Sausage Roll", "Steak Bake", "Yum Yum", "Pink Jammie"
-    };
-
     private readonly ILogger<ProductController> _logger;
+    private readonly IDataAccess<Product> _productAccess;
 
-    public ProductController(ILogger<ProductController> logger)
+    public ProductController(ILogger<ProductController> logger, IDataAccess<Product> productAccess)
     {
         _logger = logger;
+        _productAccess = productAccess;
     }
 
-    [HttpGet]
-    public IEnumerable<Product> Get(int pageStart = 0, int pageSize = 5)
+    [HttpGet("GBP")]
+    public IEnumerable<Product> GetGbp(int pageStart = 0, int? pageSize = null)
     {
-        if (pageSize > Products.Length)
-            pageSize = Products.Length;
+        // If user does not state a pageSize, return all products
+        pageSize ??= _productAccess.Size();
 
-        var rng = new Random();
-        return Enumerable.Range(1, pageSize).Select(index => new Product
-            {
-                PriceInPounds = rng.Next(0, 10),
-                Name = Products[rng.Next(Products.Length)]
-            })
-            .ToArray();
+        return _productAccess.List(pageStart,pageSize).ToArray();
+        
+    } 
+    
+    [HttpGet("EUR")]
+    public IEnumerable<Product> GetEur(int pageStart = 0, int? pageSize = null)
+    {
+        // If user does not state a pageSize, return all products
+        pageSize ??= _productAccess.Size();
+
+        IEnumerable<Product> productList = _productAccess.List(pageStart, pageSize);
+
+        foreach (Product product in productList)
+        {
+            product.PriceInEur = Math.Round(product.PriceInPounds * ExchangeRate.GbpToEurExchangeRate,2,MidpointRounding.AwayFromZero);
+        }
+
+        return productList.ToArray();
+
     }
+    
 }
