@@ -21,6 +21,7 @@ public class ProductController : ControllerBase
         _productAccess = productAccess;
     }
 
+    // User Story 1
     [HttpGet("GBP")]
     public IEnumerable<Product> GetGbp(int pageStart = 0, int? pageSize = null)
     {
@@ -31,20 +32,30 @@ public class ProductController : ControllerBase
         
     } 
     
+    // User Story 2
     [HttpGet("EUR")]
-    public IEnumerable<Product> GetEur(int pageStart = 0, int? pageSize = null)
+    public List<ProductInternational> GetEur(int pageStart = 0, int? pageSize = null)
     {
         // If user does not state a pageSize, return all products
         pageSize ??= _productAccess.Size();
 
         IEnumerable<Product> productList = _productAccess.List(pageStart, pageSize);
 
+        // Separate class so that only the User Story 2 user gets the PriceInEur
+        List<ProductInternational> eurProductList = new List<ProductInternational>();
+
         foreach (Product product in productList)
         {
-            product.PriceInEur = Math.Round(product.PriceInPounds * ExchangeRate.GbpToEurExchangeRate,2,MidpointRounding.AwayFromZero);
+            ProductInternational eurProduct = new ProductInternational(product);
+
+            // Using mathematically correct rounding convention - where 0.005 is rounded up to 0.01 etc.
+            eurProduct.PriceInEur = Math.Round(product.PriceInPounds * ExchangeRate.GbpToEurExchangeRate, 2, MidpointRounding.AwayFromZero);
+            
+            eurProductList.Add(eurProduct);
+
         }
 
-        return productList.ToArray();
+        return eurProductList;
 
     }
     
